@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#F7F5F2">
+  <meta name="description" content="Track your baby's feeds and temperature">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Baby">
+  <link rel="manifest" href="manifest.json">
+  <title>Baby Tracker</title>
+  <style>
+    /* ── Reset ──────────────────────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body { height: 100%; }
+
+    /* ── Tokens ─────────────────────────────────────────────────── */
+    :root {
+      --cream:   #F7F5F2;
+      --white:   #FFFFFF;
+      --border:  rgba(0,0,0,0.07);
+      --sh-sm:   0 1px 6px rgba(0,0,0,0.05);
+      --sh-md:   0 2px 18px rgba(0,0,0,0.09);
+      --r-card:  20px;
+      --r-btn:   18px;
+
+      --g1: #1A1A1A;
+      --g2: #6B7280;
+      --g3: #B0BAC7;
+
+      --blue-bg:  #BEDAEF;  --blue-fg:  #1B5078;  --blue-bd: #A0C9E4;
+      --pink-bg:  #F4CDD9;  --pink-fg:  #78162D;  --pink-bd: #E8AEC0;
+
+      --green-bg: #C8EDD8;  --green-fg: #1B6640;
+      --amber-bg: #FDEAC5;  --amber-fg: #7A4A00;
+      --red-bg:   #FAD5D0;  --red-fg:   #C42100;
+
+      --nav-h:    72px;
+      --hdr-h:    58px;
+      --safe-t:   env(safe-area-inset-top, 0px);
+      --safe-b:   env(safe-area-inset-bottom, 0px);
+    }
+
+    /* ── Base ───────────────────────────────────────────────────── */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+      background: var(--cream);
+      color: var(--g1);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button { font-family: inherit; cursor: pointer; border: none; background: none; }
+    input  { font-family: inherit; }
+
+    /* ── App shell ──────────────────────────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      height: 100vh; /* fallback */
+    }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    header {
+      flex-shrink: 0;
+      height: calc(var(--hdr-h) + var(--safe-t));
+      padding-top: var(--safe-t);
+      background: var(--cream);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .hdr-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+    .hdr-date {
+      position: absolute;
+      right: 18px;
+      font-size: 13px;
+      color: var(--g3);
+      font-weight: 500;
+    }
+
+    /* ── Main scroll area ───────────────────────────────────────── */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 20px 16px calc(var(--nav-h) + var(--safe-b) + 24px);
+    }
+
+    /* ── Tabs ───────────────────────────────────────────────────── */
+    .tab-pane          { display: none; }
+    .tab-pane.active   { display: block; }
+
+    /* ── Card base ──────────────────────────────────────────────── */
+    .card {
+      background: var(--white);
+      border-radius: var(--r-card);
+      border: 1px solid var(--border);
+      box-shadow: var(--sh-sm);
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+
+    .lbl {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--g3);
+      margin-bottom: 7px;
+    }
+
+    .status-val {
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: var(--g1);
+    }
+    .status-val.muted { color: var(--g3); font-weight: 400; }
+
+    /* ── Side tags ──────────────────────────────────────────────── */
+    .tag {
+      display: inline-block;
+      padding: 3px 11px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .tag.left  { background: var(--blue-bg); color: var(--blue-fg); }
+    .tag.right { background: var(--pink-bg); color: var(--pink-fg); }
+
+    .dim { color: var(--g3); font-weight: 400; font-size: 15px; }
+
+    /* ── Feed buttons ───────────────────────────────────────────── */
+    .feed-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .feed-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 28px 14px 24px;
+      border-radius: 26px;
+      border: 2px solid transparent;
+      min-height: 190px;
+      box-shadow: var(--sh-md);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .feed-btn:active {
+      transform: scale(0.95);
+      box-shadow: var(--sh-sm);
+    }
+
+    .feed-btn.left-btn  { background: var(--blue-bg); border-color: var(--blue-bd); }
+    .feed-btn.right-btn { background: var(--pink-bg); border-color: var(--pink-bd); }
+
+    .feed-btn-orb {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .left-btn  .feed-btn-orb { background: var(--blue-fg);  }
+    .right-btn .feed-btn-orb { background: var(--pink-fg); }
+
+    .feed-btn-orb svg { width: 26px; height: 26px; stroke: white; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+
+    .feed-btn-name {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+    .left-btn  .feed-btn-name { color: var(--blue-fg); }
+    .right-btn .feed-btn-name { color: var(--pink-fg); }
+
+    .feed-btn-since {
+      font-size: 12px;
+      color: var(--g2);
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    /* ── Count chip ─────────────────────────────────────────────── */
+    .count-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .count-num {
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--g1);
+      line-height: 1;
+    }
+    .count-sub {
+      font-size: 14px;
+      color: var(--g2);
+    }
+
+    /* ── Temp display in status card ────────────────────────────── */
+    .temp-big {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .temp-big.normal { color: var(--green-fg); }
+    .temp-big.high   { color: var(--amber-fg); }
+    .temp-big.fever  { color: var(--red-fg);   }
+
+    .temp-meta {
+      font-size: 14px;
+      color: var(--g2);
+      margin-top: 5px;
+    }
+
+    .card.temp-normal { border-left: 3px solid var(--green-fg); }
+    .card.temp-high   { border-left: 3px solid var(--amber-fg); }
+    .card.temp-fever  { border-left: 3px solid var(--red-fg); background: var(--red-bg); }
+
+    /* ── Temp input ─────────────────────────────────────────────── */
+    .temp-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    #temp-input {
+      flex: 1;
+      padding: 16px 14px;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      text-align: center;
+      background: var(--cream);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      color: var(--g1);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      -moz-appearance: textfield;
+      transition: border-color 0.15s;
+    }
+    #temp-input:focus { border-color: var(--g1); }
+    #temp-input::-webkit-inner-spin-button,
+    #temp-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .temp-unit {
+      font-size: 26px;
+      font-weight: 600;
+      color: var(--g2);
+      flex-shrink: 0;
+    }
+
+    /* ── Log button ─────────────────────────────────────────────── */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: var(--g1);
+      color: var(--white);
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      text-align: center;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn-primary:active { transform: scale(0.98); opacity: 0.82; }
+
+    /* ── Temp reference table ───────────────────────────────────── */
+    .ref-list {
+      border-radius: var(--r-card);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: var(--sh-sm);
+      margin-bottom: 14px;
+    }
+    .ref-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 18px;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+    }
+    .ref-row:last-child { border-bottom: none; }
+    .ref-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .ref-row.r-normal .ref-dot { background: var(--green-fg); }
+    .ref-row.r-high   .ref-dot { background: var(--amber-fg); }
+    .ref-row.r-fever  .ref-dot { background: var(--red-fg);   }
+    .ref-range { font-size: 13px; color: var(--g2); min-width: 115px; }
+    .ref-lbl   { font-size: 14px; font-weight: 600; }
+    .ref-row.r-normal .ref-lbl { color: var(--green-fg); }
+    .ref-row.r-high   .ref-lbl { color: var(--amber-fg); }
+    .ref-row.r-fever  .ref-lbl { color: var(--red-fg);   }
+
+    /* ── History ────────────────────────────────────────────────── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .filter-btn {
+      flex: 1;
+      padding: 10px 6px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--white);
+      color: var(--g2);
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      box-shadow: var(--sh-sm);
+    }
+    .filter-btn.active {
+      background: var(--g1);
+      color: var(--white);
+      border-color: var(--g1);
+    }
+
+    .day-header {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--g3);
+      padding: 14px 4px 8px;
+    }
+    .day-header:first-child { padding-top: 0; }
+
+    .hist-entry {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      background: var(--white);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 13px 14px;
+      margin-bottom: 8px;
+      box-shadow: var(--sh-sm);
+    }
+
+    .entry-icon {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .entry-icon.left   { background: var(--blue-bg);  color: var(--blue-fg);  }
+    .entry-icon.right  { background: var(--pink-bg);  color: var(--pink-fg);  }
+    .entry-icon.normal { background: var(--green-bg); color: var(--green-fg); }
+    .entry-icon.high   { background: var(--amber-bg); color: var(--amber-fg); }
+    .entry-icon.fever  { background: var(--red-bg);   color: var(--red-fg);   }
+
+    .entry-body { flex: 1; min-width: 0; }
+    .entry-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--g1);
+      margin-bottom: 2px;
+    }
+    .entry-title.high  { color: var(--amber-fg); }
+    .entry-title.fever { color: var(--red-fg);   }
+    .entry-sub {
+      font-size: 13px;
+      color: var(--g2);
+    }
+
+    .del-btn {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--g3);
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .del-btn:active {
+      background: var(--red-bg);
+      color: var(--red-fg);
+    }
+    .del-btn svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; fill: none; }
+
+    .empty-state {
+      text-align: center;
+      padding: 64px 20px;
+      color: var(--g3);
+    }
+    .empty-icon { font-size: 44px; margin-bottom: 12px; }
+    .empty-text { font-size: 15px; }
+
+    /* ── Bottom nav ─────────────────────────────────────────────── */
+    #bottom-nav {
+      flex-shrink: 0;
+      height: calc(var(--nav-h) + var(--safe-b));
+      padding-bottom: var(--safe-b);
+      background: rgba(255,255,255,0.92);
+      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      box-shadow: 0 -1px 10px rgba(0,0,0,0.05);
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 8px 0;
+      color: var(--g3);
+      transition: color 0.15s;
+    }
+    .nav-btn.active { color: var(--g1); }
+    .nav-btn svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    .nav-lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.2px; }
+
+    /* ── Toast ──────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: calc(var(--nav-h) + var(--safe-b) + 14px);
+      left: 50%;
+      transform: translateX(-50%) translateY(14px);
+      background: rgba(26,26,26,0.92);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      color: white;
+      padding: 11px 22px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      z-index: 999;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Tap ripple on feed buttons ─────────────────────────────── */
+    @keyframes tap-pop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(0.95); }
+      70%  { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+    .feed-btn.popping { animation: tap-pop 0.25s ease; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <header>
+    <h1 class="hdr-title">Baby Tracker</h1>
+    <span class="hdr-date" id="hdr-date"></span>
+  </header>
+
+  <!-- ── Main content ────────────────────────────────────────────── -->
+  <main id="main">
+
+    <!-- FEED TAB -->
+    <section id="tab-feed" class="tab-pane active">
+
+      <div class="card" id="last-feed-card">
+        <div class="lbl">Last Feed</div>
+        <div class="status-val muted" id="last-feed-val">No feeds logged yet</div>
+      </div>
+
+      <div class="feed-grid">
+        <button class="feed-btn left-btn" id="btn-left" onclick="logFeed('left')">
+          <div class="feed-btn-orb">
+            <svg viewBox="0 0 24 24"><path d="M19 12H5m0 0 7-7m-7 7 7 7"/></svg>
+          </div>
+          <span class="feed-btn-name">Left</span>
+          <span class="feed-btn-since" id="left-since">—</span>
+        </button>
+        <button class="feed-btn right-btn" id="btn-right" onclick="logFeed('right')">
+          <div class="feed-btn-orb">
+            <svg viewBox="0 0 24 24"><path d="M5 12h14m0 0-7-7m7 7-7 7"/></svg>
+          </div>
+          <span class="feed-btn-name">Right</span>
+          <span class="feed-btn-since" id="right-since">—</span>
+        </button>
+      </div>
+
+      <div class="card count-card">
+        <span class="count-num" id="today-count">0</span>
+        <span class="count-sub">feeds today</span>
+      </div>
+
+    </section>
+
+    <!-- TEMP TAB -->
+    <section id="tab-temp" class="tab-pane">
+
+      <div class="card" id="last-temp-card">
+        <div class="lbl">Last Reading</div>
+        <div id="last-temp-inner">
+          <div class="status-val muted">No readings yet</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="temp-input-wrap">
+          <input
+            type="number"
+            id="temp-input"
+            inputmode="decimal"
+            step="0.1"
+            min="35.0"
+            max="43.0"
+            value="37.0"
+          >
+          <span class="temp-unit">°C</span>
+        </div>
+        <button class="btn-primary" onclick="logTemp()">Log Temperature</button>
+      </div>
+
+      <div class="ref-list">
+        <div class="ref-row r-normal">
+          <div class="ref-dot"></div>
+          <div class="ref-range">36.5 – 37.5 °C</div>
+          <div class="ref-lbl">Normal</div>
+        </div>
+        <div class="ref-row r-high">
+          <div class="ref-dot"></div>
+          <div class="ref-range">37.5 – 38.0 °C</div>
+          <div class="ref-lbl">Slightly elevated</div>
+        </div>
+        <div class="ref-row r-fever">
+          <div class="ref-dot"></div>
+          <div class="ref-range">≥ 38.0 °C</div>
+          <div class="ref-lbl">Fever — call your doctor</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- HISTORY TAB -->
+    <section id="tab-history" class="tab-pane">
+
+      <div class="filter-row">
+        <button class="filter-btn active" data-f="all"  onclick="setFilter('all')">All</button>
+        <button class="filter-btn"        data-f="feed" onclick="setFilter('feed')">Feeds</button>
+        <button class="filter-btn"        data-f="temp" onclick="setFilter('temp')">Temperatures</button>
+      </div>
+
+      <div id="hist-list"></div>
+
+    </section>
+
+  </main>
+
+  <!-- ── Bottom nav ──────────────────────────────────────────────── -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-t="feed" onclick="goTab('feed')">
+      <!-- drop / milk icon -->
+      <svg viewBox="0 0 24 24">
+        <path d="M12 2C8 7 5 10.5 5 14a7 7 0 0014 0c0-3.5-3-7-7-12z"/>
+      </svg>
+      <span class="nav-lbl">Feed</span>
+    </button>
+    <button class="nav-btn" data-t="temp" onclick="goTab('temp')">
+      <!-- thermometer -->
+      <svg viewBox="0 0 24 24">
+        <path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/>
+      </svg>
+      <span class="nav-lbl">Temp</span>
+    </button>
+    <button class="nav-btn" data-t="history" onclick="goTab('history')">
+      <!-- clock -->
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span class="nav-lbl">History</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- ── Toast ──────────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+/* ───────────────────────────────────────────────────────────────────
+   State & storage
+─────────────────────────────────────────────────────────────────── */
+const KEY = 'baby-tracker-v1';
+let entries = [];
+let tab     = 'feed';
+let filter  = 'all';
+
+function load() {
+  try { entries = JSON.parse(localStorage.getItem(KEY) || '[]'); }
+  catch { entries = []; }
+}
+function save() {
+  localStorage.setItem(KEY, JSON.stringify(entries));
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Actions
+─────────────────────────────────────────────────────────────────── */
+function logFeed(side) {
+  entries.unshift({ id: String(Date.now()), type: 'feed', side, ts: Date.now() });
+  save();
+  renderFeed();
+  toast(side === 'left' ? '← Left side logged' : 'Right side logged →');
+  const btn = document.getElementById(side === 'left' ? 'btn-left' : 'btn-right');
+  btn.classList.add('popping');
+  btn.addEventListener('animationend', () => btn.classList.remove('popping'), { once: true });
+}
+
+function logTemp() {
+  const v = parseFloat(document.getElementById('temp-input').value);
+  if (isNaN(v) || v < 35 || v > 43) {
+    toast('Enter a temperature between 35 and 43 °C');
+    return;
+  }
+  entries.unshift({ id: String(Date.now()), type: 'temp', value: v, ts: Date.now() });
+  save();
+  renderTemp();
+  toast(`${v.toFixed(1)} °C logged`);
+}
+
+function del(id) {
+  if (!confirm('Remove this entry?')) return;
+  entries = entries.filter(e => e.id !== id);
+  save();
+  renderFeed();
+  renderTemp();
+  renderHistory();
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Helpers
+─────────────────────────────────────────────────────────────────── */
+function ago(ts) {
+  const d = Date.now() - ts;
+  const s = Math.floor(d / 1000), m = Math.floor(s / 60),
+        h = Math.floor(m / 60),   dy = Math.floor(h / 24);
+  if (s < 60)  return 'just now';
+  if (m < 60)  return `${m}m ago`;
+  if (h < 24)  return m % 60 ? `${h}h ${m % 60}m ago` : `${h}h ago`;
+  return `${dy}d ago`;
+}
+function fmtT(ts) {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+function fmtD(ts) {
+  const d = new Date(ts), t = new Date(), y = new Date();
+  y.setDate(t.getDate() - 1);
+  if (d.toDateString() === t.toDateString()) return 'Today';
+  if (d.toDateString() === y.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+}
+function cat(v) { return v >= 38 ? 'fever' : v >= 37.5 ? 'high' : 'normal'; }
+function catLbl(v) { return { normal: 'Normal', high: 'Slightly elevated', fever: 'Fever' }[cat(v)]; }
+
+/* ───────────────────────────────────────────────────────────────────
+   Render: Feed tab
+─────────────────────────────────────────────────────────────────── */
+function renderFeed() {
+  const feeds  = entries.filter(e => e.type === 'feed');
+  const lefts  = feeds.filter(e => e.side === 'left');
+  const rights = feeds.filter(e => e.side === 'right');
+
+  const el = document.getElementById('last-feed-val');
+  if (!feeds.length) {
+    el.className = 'status-val muted';
+    el.textContent = 'No feeds logged yet';
+  } else {
+    const f = feeds[0];
+    const s = f.side;
+    el.className = 'status-val';
+    el.innerHTML = `<span class="tag ${s}">${s === 'left' ? 'Left' : 'Right'}</span>&ensp;${ago(f.ts)} <span class="dim">at ${fmtT(f.ts)}</span>`;
+  }
+
+  document.getElementById('left-since').textContent  = lefts.length  ? ago(lefts[0].ts)  : 'Not used yet';
+  document.getElementById('right-since').textContent = rights.length ? ago(rights[0].ts) : 'Not used yet';
+
+  const today = new Date().toDateString();
+  document.getElementById('today-count').textContent =
+    feeds.filter(e => new Date(e.ts).toDateString() === today).length;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Render: Temp tab
+─────────────────────────────────────────────────────────────────── */
+function renderTemp() {
+  const temps = entries.filter(e => e.type === 'temp');
+  const card  = document.getElementById('last-temp-card');
+  const inner = document.getElementById('last-temp-inner');
+
+  if (!temps.length) {
+    card.className = 'card';
+    inner.innerHTML = '<div class="status-val muted">No readings yet</div>';
+    return;
+  }
+  const t  = temps[0];
+  const c  = cat(t.value);
+  card.className = `card temp-${c}`;
+  inner.innerHTML = `
+    <div class="temp-big ${c}">${t.value.toFixed(1)}°C</div>
+    <div class="temp-meta">${catLbl(t.value)} &middot; ${ago(t.ts)} at ${fmtT(t.ts)}</div>
+  `;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Render: History tab
+─────────────────────────────────────────────────────────────────── */
+function renderHistory() {
+  const list = document.getElementById('hist-list');
+  let rows = entries;
+  if (filter === 'feed') rows = entries.filter(e => e.type === 'feed');
+  if (filter === 'temp') rows = entries.filter(e => e.type === 'temp');
+
+  if (!rows.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">Nothing here yet</div>
+      </div>`;
+    return;
+  }
+
+  let html = '', lastD = '';
+  const X = `<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+
+  for (const e of rows.slice(0, 120)) {
+    const d = fmtD(e.ts);
+    if (d !== lastD) { html += `<div class="day-header">${d}</div>`; lastD = d; }
+
+    if (e.type === 'feed') {
+      const s = e.side;
+      html += `
+        <div class="hist-entry">
+          <div class="entry-icon ${s}">${s === 'left' ? '←' : '→'}</div>
+          <div class="entry-body">
+            <div class="entry-title">Feed &middot; ${s === 'left' ? 'Left Side' : 'Right Side'}</div>
+            <div class="entry-sub">${fmtT(e.ts)} &middot; ${ago(e.ts)}</div>
+          </div>
+          <button class="del-btn" onclick="del('${e.id}')" aria-label="Delete">${X}</button>
+        </div>`;
+    } else {
+      const c = cat(e.value);
+      html += `
+        <div class="hist-entry">
+          <div class="entry-icon ${c}">°C</div>
+          <div class="entry-body">
+            <div class="entry-title ${c}">${e.value.toFixed(1)}°C &middot; ${catLbl(e.value)}</div>
+            <div class="entry-sub">${fmtT(e.ts)} &middot; ${ago(e.ts)}</div>
+          </div>
+          <button class="del-btn" onclick="del('${e.id}')" aria-label="Delete">${X}</button>
+        </div>`;
+    }
+  }
+  list.innerHTML = html;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Navigation
+─────────────────────────────────────────────────────────────────── */
+function goTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${t}`).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+  if (t === 'history') renderHistory();
+}
+
+function setFilter(f) {
+  filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+  renderHistory();
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Toast
+─────────────────────────────────────────────────────────────────── */
+let toastTmr;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   PWA — service worker
+─────────────────────────────────────────────────────────────────── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   Init
+─────────────────────────────────────────────────────────────────── */
+load();
+document.getElementById('hdr-date').textContent =
+  new Date().toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+renderFeed();
+renderTemp();
+
+// Refresh relative times every minute
+setInterval(() => {
+  if (tab === 'feed')    renderFeed();
+  if (tab === 'temp')    renderTemp();
+  if (tab === 'history') renderHistory();
+}, 60_000);
+</script>
+</body>
+</html>

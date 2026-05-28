@@ -1,0 +1,23 @@
+{
+  "name": "Baby Tracker",
+  "short_name": "Baby",
+  "description": "Track your baby's feeds and temperature",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F7F5F2",
+  "theme_color": "#F7F5F2",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%23F7F5F2'/%3E%3Cpath d='M96 28C72 60 54 80 54 108a42 42 0 0084 0c0-28-18-48-42-80z' fill='%231B5078'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%23F7F5F2'/%3E%3Cpath d='M256 72C205 160 144 212 144 288a112 112 0 00224 0c0-76-61-128-112-216z' fill='%231B5078'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
